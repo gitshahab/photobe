@@ -9,16 +9,16 @@ import { useEffect, useState } from "react";
 
 export function Preview() {
   const { status, outputUrl, errorMessage } = useStore();
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(true);
 
   useEffect(() => {
-    if (status === "loading") {
+    if (status === "generating") {
       setImageLoaded(false);
     }
   }, [status]);
 
   const isActuallyLoading =
-    status === "loading" || (status === "success" && !imageLoaded);
+    status === "generating" || (status === "success" && !imageLoaded);
 
   const handleDownload = async () => {
     if (!outputUrl) return;

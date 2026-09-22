@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Terminal } from "lucide-react";
+import Image from "next/image";
 
 export default function Header() {
   return (
@@ -9,7 +9,13 @@ export default function Header() {
           href="/"
           className="flex items-center gap-2 font-semibold text-lg"
         >
-          <Terminal className="w-5 h-5" />
+          <Image
+            src="/logo.webp"
+            alt="Photobe Logo"
+            width={24}
+            height={24}
+            className="object-contain"
+          />
           <span>Photobe</span>
         </Link>
         <Link href="/studio" className="text-sm text-gray-500">

@@ -32,7 +32,7 @@ export function Controls() {
 
   const handleGenerate = async () => {
     if (!imageFile || !prompt) return;
-    setStatus("loading");
+    setStatus("generating");
 
     const optimisedImage = await resizeImage(imageFile);
 
