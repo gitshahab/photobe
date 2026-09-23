@@ -6,7 +6,9 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const image = formData.get("image") as File;
-    const promptText = formData.get("image") as File;
+    const promptText = formData.get("prompt") as string;
+
+    const cleanPrompt = promptText.trim();
 
     if (!image || !promptText) {
       return NextResponse.json(
@@ -69,7 +71,7 @@ export async function POST(req: Request) {
         "6": {
           class_type: "CLIPTextEncode",
           inputs: {
-            text: `commercial product photography, photorealistic studio lighting, sharp focus, complete scene, fully rendered background, ${promptText}`,
+            text: `commercial product photography, photorealistic studio lighting, sharp focus, complete scene, fully rendered background, ${cleanPrompt}`,
             clip: ["4", 1],
           },
         },

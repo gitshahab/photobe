@@ -43,7 +43,7 @@ export function Preview() {
     <Card className="relative w-full min-h-[400px] lg:min-h-full flex flex-col items-center justify-center bg-gray-50 border rounded-2xl overflow-hidden">
       {isActuallyLoading && (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-50/80 backdrop-blur-sm">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <ImageIcon className="text-gray-600 animate-pulse w-12 h-12 py-2" />
           <p className="text-sm font-medium text-gray-600 animate-pulse">
             {status === "success"
               ? "Painting image..."

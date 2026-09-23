@@ -14,6 +14,9 @@ export async function GET(req: Request) {
     // fetch the raw image bytes from Comfy
     const imageRes = await fetch(
       `${COMFY_URL}/view?filename=${filename}&type=output`,
+      {
+        cache: "no-store",
+      },
     );
 
     if (!imageRes.ok) {
@@ -26,7 +29,7 @@ export async function GET(req: Request) {
     return new NextResponse(imageBuffer, {
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     });
   } catch (error) {
