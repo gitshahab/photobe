@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const COMFY_URL = process.env.COMFYUI_URL || "http://127.0.0.1:8188";
 
 export async function GET(req: Request) {
@@ -12,7 +14,12 @@ export async function GET(req: Request) {
     }
 
     // check Comfy history
-    const res = await fetch(`${COMFY_URL}/history/${prompt_id}`);
+    const res = await fetch(`${COMFY_URL}/history/${prompt_id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`ComfyUI responded with status: ${res.status}`);
+    }
     const historyData = await res.json();
 
     // if the prompt_id exists in history, it's done

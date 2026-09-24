@@ -100,7 +100,7 @@ export async function POST(req: Request) {
             cfg: 6.5,
             sampler_name: "euler",
             scheduler: "karras",
-            denoise: 0.75,
+            denoise: 0.55,
             model: ["4", 0],
             positive: ["6", 0],
             negative: ["7", 0],

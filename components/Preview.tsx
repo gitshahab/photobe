@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 export function Preview() {
   const { status, outputUrl, errorMessage } = useStore();
   const [imageLoaded, setImageLoaded] = useState(true);
+  const [isDownloaded, setDownloaded] = useState(false);
 
   useEffect(() => {
     if (status === "generating") {
@@ -23,19 +24,22 @@ export function Preview() {
   const handleDownload = async () => {
     if (!outputUrl) return;
     try {
+      setDownloaded(true);
       const response = await fetch(outputUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.style.display = "none";
       link.href = url;
-      link.download = "ProductStudio-Asset.png";
+      link.download = `${Date.now()}.png`;
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
     } catch (error) {
       console.error("Failed to download image", error);
+    } finally {
+      setDownloaded(false);
     }
   };
 
@@ -75,6 +79,7 @@ export function Preview() {
                 onClick={handleDownload}
                 size="lg"
                 className="rounded-full shadow-xl bg-black hover:bg-gray-800 text-white gap-2"
+                disabled={isDownloaded}
               >
                 <Download className="w-4 h-4" />
                 Download
