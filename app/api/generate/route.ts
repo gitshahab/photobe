@@ -55,8 +55,6 @@ export async function POST(req: Request) {
           },
         },
         // Node 11: Resize to an SD1.5-native resolution before encoding.
-        // 512x768 portrait works well for product-on-surface compositions.
-        // Swap to 768x512 if your product shots are landscape.
         "11": {
           class_type: "ImageScale",
           inputs: {
@@ -67,6 +65,45 @@ export async function POST(req: Request) {
             crop: "center",
           },
         },
+
+        // Node 12a: Creates the rembg session that ImageRemoveBackground+ needs, using u2net default model
+        "12a": {
+          class_type: "RemBGSession+",
+          inputs: {
+            model: "u2net: general purpose",
+            providers: "CPU",
+          },
+        },
+
+        //Node 12: Auto-generate mask via background removal, comfyui-rembg
+        "12": {
+          class_type: "ImageRemoveBackground+",
+          inputs: { rembg_session: ["12a", 0], image: ["11", 0] },
+        },
+
+        //Node 12b: Convert the removed-bg image's alpha channel into a mask.
+        "12b": {
+          class_type: "InvertMask",
+          inputs: { mask: ["12", 1] },
+        },
+
+        //Node 13: Load the ControlNet depth model
+        "13": {
+          class_type: "ControlNetLoader",
+          inputs: { control_net_name: "control_v11f1p_sd15_depth.pth" },
+        },
+
+        //Node 14: Generate a depth map from the resized image, comfyui_controlnet_aux
+        "14": {
+          class_type: "MiDaS-DepthMapPreprocessor",
+          inputs: {
+            image: ["11", 0],
+            a: 6.28,
+            bg_threshold: 0.1,
+            resolution: 512,
+          },
+        },
+
         // Node 6: Positive Prompt
         "6": {
           class_type: "CLIPTextEncode",
@@ -83,15 +120,30 @@ export async function POST(req: Request) {
             clip: ["4", 1],
           },
         },
-        // Node 10: Encode the RESIZED image to Latent space
-        "10": {
-          class_type: "VAEEncode",
+
+        //Node 15: Apply ControlNet depth conditioning to the positive prompt
+        "15": {
+          class_type: "ControlNetApply",
+          inputs: {
+            conditioning: ["6", 0],
+            control_net: ["13", 0],
+            image: ["14", 0],
+            strength: 0.6,
+          },
+        },
+
+        // Node 16: Encode image + mask for proper inpainting ( replace plain VAEEncode)
+        "16": {
+          class_type: "VAEEncodeForInpaint",
           inputs: {
             pixels: ["11", 0],
             vae: ["4", 2],
+            mask: ["12b", 0],
+            grow_mask_by: 6,
           },
         },
-        // Node 3: KSampler — more steps, karras scheduler, slightly lower CFG
+
+        // Node 3: KSampler — ControlNet conditioned positive + inpaint-aware latent
         "3": {
           class_type: "KSampler",
           inputs: {
@@ -100,11 +152,11 @@ export async function POST(req: Request) {
             cfg: 6.5,
             sampler_name: "euler",
             scheduler: "karras",
-            denoise: 0.55,
+            denoise: 1.0,
             model: ["4", 0],
-            positive: ["6", 0],
+            positive: ["15", 0],
             negative: ["7", 0],
-            latent_image: ["10", 0],
+            latent_image: ["16", 0],
           },
         },
         // Node 8: Decode generated latent back to RGB pixels
