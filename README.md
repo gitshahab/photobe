@@ -112,6 +112,26 @@ The current V1 prototype uses a global Img2Img Stable Diffusion 1.5 pipeline. Th
 - **Inpainting + ControlNet** — apply full denoise only to the masked background area, keeping the product mask untouched. Combine this with a Depth ControlNet to generate accurate environmental shadows and reflections around the base of the untouched product
 - **Upscaling pass** — add a Real-ESRGAN or similar upscale node to reach genuine high-resolution output for commercial use
 
+## 🚀 V2 Architecture
+
+The current V1 prototype uses a global Img2Img Stable Diffusion 1.5 pipeline. The limitation of this approach is the global denoise tradeoff: low denoise preserves the product but yields poor backgrounds, while high denoise yields photorealistic backgrounds but mutates the product's shape/branding.
+
+**Original roadmap:**
+
+- **Automated masking** — integrate a Segment Anything (SAM) node to automatically isolate the product silhouette
+- **Inpainting + ControlNet** — apply full denoise only to the masked background area, keeping the product mask untouched. Combine this with a Depth ControlNet to generate accurate environmental shadows and reflections around the base of the untouched product
+- **Upscaling pass** — add a Real-ESRGAN or similar upscale node to reach genuine high-resolution output for commercial use
+
+**Shipped:**
+
+- Automated masking via `RemBGSession+` / `ImageRemoveBackground+` — swapped SAM for rembg given the timeline; same practical outcome (automatic product silhouette isolation) with a single lightweight model instead of a multi-model segmentation pipeline
+- `ControlNetLoader` + MiDaS depth preprocessor for background conditioning, applied via `ControlNetApply` to the positive prompt
+- Replaced `VAEEncode` with `VAEEncodeForInpaint`, feeding an inverted product mask so denoise can safely run at 1.0 on the background only — this directly resolves the global-denoise tradeoff described above, since the product region is now protected from regeneration entirely rather than partially preserved through a shared denoise value
+
+**Still open:**
+
+- Upscaling pass (Real-ESRGAN or similar) for genuine high-resolution commercial output
+
 ---
 
 ## 🛠️ Setup & Local Development
@@ -127,6 +147,21 @@ Run the following cell to install ComfyUI and Cloudflare:
 %cd ComfyUI
 !pip install -r requirements.txt
 !wget -c https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors -P ./models/checkpoints/
+
+# V2: background-removal + inpainting node pack
+%cd custom_nodes
+!git clone https://github.com/cubiq/ComfyUI_essentials
+!pip install -r ComfyUI_essentials/requirements.txt
+!pip install rembg
+
+# V2: ControlNet preprocessor node pack
+!git clone https://github.com/Fannovel16/comfyui_controlnet_aux
+!pip install -r comfyui_controlnet_aux/requirements.txt
+%cd ..
+
+# V2: ControlNet depth model for SD1.5
+!wget -c https://huggingface.co/lllyasviel/ControlNet-v1-1/resolve/main/control_v11f1p_sd15_depth.pth -P ./models/controlnet/
+
 !wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
 !dpkg -i cloudflared-linux-amd64.deb
 ```
@@ -134,9 +169,24 @@ Run the following cell to install ComfyUI and Cloudflare:
 Run ComfyUI in the background and launch the tunnel:
 
 ```python
-import os, time
-os.system("nohup python main.py > comfy.log 2>&1 &")
-time.sleep(5)
+import os, time, socket
+
+os.system("nohup python /content/ComfyUI/main.py > /content/ComfyUI/comfy.log 2>&1 &")
+
+def wait_for_port(port, host='127.0.0.1', timeout=90):
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                print(f"ComfyUI is up after {time.time() - start:.1f}s")
+                return True
+        except OSError:
+            time.sleep(1)
+    print("Timed out waiting for ComfyUI to start — check comfy.log")
+    return False
+
+wait_for_port(8188)
+
 !cloudflared tunnel --url http://127.0.0.1:8188
 ```
 
